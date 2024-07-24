@@ -24,94 +24,15 @@ struct RecordData {
     line: u64,
 }
 
-fn main() {
-    let stringcsv = std::fs::read_to_string("bpc_ingredientes_proc.csv").unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut reader = csv::ReaderBuilder::new()
         .delimiter(b'~')
         .flexible(true)
         .from_path("bpc_ingredientes_proc.csv")
         .unwrap();
-    let mut reader2 = csv::ReaderBuilder::new()
-        .delimiter(b'~')
-        .flexible(true)
-        .from_path("bpc_ingredientes_proc.csv")
-        .unwrap();
-    let mut positions = vec![];
-    let mut previous_position = 0u64;
-    while let Some(record_result) = reader.records().next() {
-        let current_position = reader.position().byte();
-        let record = record_result.unwrap();
-        let br = record.as_byte_record().as_slice().len();
-        let des = record
-            .deserialize::<SerdeNewIngrediente>(Some(reader2.headers().unwrap()))
-            // .unwrap();
-            .inspect_err(|e| {
-                positions.push(RecordData {
-                    error: true,
-                    record_length: br,
-                    error_position: Some(e.position().unwrap().byte()),
-                    iterator_position: current_position,
-                    previous_position: previous_position,
-                    diff: current_position - previous_position,
-                    record: e.position().unwrap().record(),
-                    line: e.position().unwrap().line(),
-                });
-            })
-            .inspect(|cv| {
-                positions.push(RecordData {
-                    error: false,
-                    record_length: br,
-                    error_position: None,
-                    iterator_position: current_position,
-                    previous_position: previous_position,
-                    diff: current_position - previous_position,
-                    record: record.position().unwrap().record(),
-                    line: record.position().unwrap().line(),
-                })
-            });
-        previous_position = current_position;
+    for record in reader.deserialize() {
+        let des: SerdeNewIngrediente = record?;
+        //        println!("{des:#?}");
     }
-
-        let erroring = positions
-            .clone()
-            .into_iter()
-            .filter(|pos| pos.error.eq(&true))
-            .collect::<Vec<RecordData>>();
-
-        let fine = positions
-            .clone()
-            .into_iter()
-            .filter(|pos| pos.error.eq(&false))
-            .collect::<Vec<RecordData>>();
-
-        let mut sorted_by_record: IndexMap<u64, Vec<RecordData>> = IndexMap::new();
-        positions
-            .clone()
-            .into_iter()
-            .for_each(|node| match sorted_by_record.get_mut(&node.record) {
-                Some(value) => {
-                    println!("pase por aca");
-                    value.push(node)
-                }
-                None => {
-                    sorted_by_record.insert(node.record, vec![node]);
-                }
-            });
-        let mut iter = positions.clone().into_iter().enumerate().peekable();
-        let mut previous_node = iter.next();
-
-        while let Some((n, node)) = iter.next() {
-            if node.error.eq(&true) {}
-        }
-        sorted_by_record.sort_keys();
-        for (pos, node) in sorted_by_record {
-            assert!(node.len().eq(&1));
-
-            if pos < 100 {
-                // println!("{}: {:#?}", pos, node)
-            }
-        }
-    }
-
-    println!("{}", positions.len())
+    return Ok(());
 }
